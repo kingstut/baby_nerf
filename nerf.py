@@ -18,7 +18,7 @@ Input: A set of camera poses {x_c, y_c, z_c, gamma_c, theta_c} x n , height H, w
 Output: A bundle of rays for every pose {v_o, v_d} x {H x W x n}
 """
 def get_v(init_position, H, W): 
-    v_0 = init_position[:, :, :, :]
+    v_0 = init_position[:, :, :, :3]
     v_d = 
 
     return v_0, v_d 
@@ -65,7 +65,7 @@ class NeRF(nn.Module):
         return x 
 
 """Step 5: Volume Rendering
-Input: Depth values, RGB colour and volume density {R, G, B, sigma} x {H x W x m x n}
+Input: RGB colour and volume density {R, G, B, sigma} x {H x W x m x n}
 Output: A set of rendered images (one per pose) {H, W} x n 
 """
 def exclusive_cumprod(x):
@@ -77,11 +77,11 @@ def exclusive_cumprod(x):
     cp[..., 0] = 1.
     return cp
 
-def volume_render(network_output, depth_values): 
+def volume_render(network_output): 
     sigma= torch.nn.functional.relu(network_output[:, :, :, :, 3])
     rgb = torch.sigmoid(network_output[:, :, :, :, :3])
 
-    dists = torch.ones(m)*(depth_values[..., 1] - depth_values[..., 0])
+    dists = torch.ones(m)*((far_thresh - near_thresh)/ m)
 
     alpha = 1.0 - torch.exp(-sigma * dists)
     weights = alpha * exclusive_cumprod(1.0 - alpha)
